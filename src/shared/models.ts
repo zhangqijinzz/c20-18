@@ -39,7 +39,10 @@ export interface ItemBounds {
 export interface LayoutAnalysis {
   overlapIds: string[]
   outOfBoundsIds: string[]
+  /** 真实覆盖面积占桌面面积的百分比，重叠只计一次，可能超过 100 */
   coveragePercent: number
+  /** 设备实际覆盖（旋转后的投影并集）是否已超出桌面可用面积 */
+  overCapacity: boolean
   status: 'clear' | 'attention'
 }
 

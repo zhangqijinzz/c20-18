@@ -27,6 +27,58 @@ export function rectanglesOverlap(first: ItemBounds, second: ItemBounds): boolea
   return horizontal > 1 && vertical > 1
 }
 
+interface CoverageInterval {
+  start: number
+  end: number
+}
+
+/**
+ * 计算一组包围盒在平面上的真实覆盖面积（并集面积）：
+ * 设备互相叠放的部分只计一次。按 y 坐标切条、合并 x 区间的扫描线方式实现，
+ * 设备数量较多（大量重复摆放）时结果同样稳定。
+ */
+export function unionCoverageArea(allBounds: ItemBounds[]): number {
+  const validBounds = allBounds.filter(
+    (candidate) => Number.isFinite(candidate.left)
+      && Number.isFinite(candidate.right)
+      && candidate.right > candidate.left
+      && candidate.bottom > candidate.top,
+  )
+  if (validBounds.length === 0) return 0
+
+  const yCoordinates = [...new Set(validBounds.flatMap((candidate) => [candidate.top, candidate.bottom]))]
+    .sort((first, second) => first - second)
+
+  let area = 0
+  for (let index = 0; index < yCoordinates.length - 1; index += 1) {
+    const slabTop = yCoordinates[index]
+    const slabBottom = yCoordinates[index + 1]
+    if (slabBottom <= slabTop) continue
+
+    const crossing = validBounds
+      .filter((candidate) => candidate.top <= slabTop && candidate.bottom >= slabBottom)
+      .map((candidate): CoverageInterval => ({ start: candidate.left, end: candidate.right }))
+      .sort((first, second) => first.start - second.start)
+
+    let slabWidth = 0
+    let mergedStart = 0
+    let mergedEnd = 0
+    crossing.forEach((interval, intervalIndex) => {
+      if (intervalIndex === 0 || interval.start > mergedEnd) {
+        slabWidth += intervalIndex === 0 ? 0 : mergedEnd - mergedStart
+        mergedStart = interval.start
+        mergedEnd = interval.end
+      } else {
+        mergedEnd = Math.max(mergedEnd, interval.end)
+      }
+    })
+    if (crossing.length > 0) slabWidth += mergedEnd - mergedStart
+
+    area += slabWidth * (slabBottom - slabTop)
+  }
+  return area
+}
+
 export function analyzeLayout(plan: WorkspacePlan): LayoutAnalysis {
   const overlapIds = new Set<string>()
   const outOfBoundsIds = new Set<string>()
@@ -53,14 +105,20 @@ export function analyzeLayout(plan: WorkspacePlan): LayoutAnalysis {
     }
   }
 
-  const occupiedArea = plan.items.reduce((total, item) => total + item.widthMm * item.heightMm, 0)
+  // 真实覆盖：每件设备取旋转后在桌面上的投影外接框，投影之间的重叠只计一次
+  const occupiedArea = unionCoverageArea([...bounds.values()])
   const deskArea = plan.deskWidthMm * plan.deskHeightMm
-  const coveragePercent = Math.min(100, Math.round((occupiedArea / deskArea) * 100))
-  const hasIssue = overlapIds.size > 0 || outOfBoundsIds.size > 0
+  // 桌面被改小到没有可用面积时，只要还有设备就按最拥挤处理，避免出现 NaN / Infinity
+  const coveragePercent = deskArea > 0
+    ? Math.min(999, Math.round((occupiedArea / deskArea) * 100))
+    : (occupiedArea > 0 ? 999 : 0)
+  const overCapacity = deskArea > 0 ? occupiedArea > deskArea : occupiedArea > 0
+  const hasIssue = overlapIds.size > 0 || outOfBoundsIds.size > 0 || overCapacity
   return {
     overlapIds: [...overlapIds],
     outOfBoundsIds: [...outOfBoundsIds],
     coveragePercent,
+    overCapacity,
     status: hasIssue ? 'attention' : 'clear',
   }
 }

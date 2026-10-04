@@ -41,7 +41,7 @@ export interface WorkspaceViewModel {
   closePreview: () => void
 }
 
-const emptyInspection = { analysis: { overlapIds: [], outOfBoundsIds: [], coveragePercent: 0, status: 'clear' as const }, issueIds: [], issueCount: 0 }
+const emptyInspection = { analysis: { overlapIds: [], outOfBoundsIds: [], coveragePercent: 0, overCapacity: false, status: 'clear' as const }, issueIds: [], issueCount: 0 }
 
 export function useWorkspaceViewModel(repository?: WorkspaceRepository): WorkspaceViewModel {
   const repositoryRef = useRef(repository ?? new LocalWorkspaceRepository())
