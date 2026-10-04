@@ -39,7 +39,10 @@ export interface ItemBounds {
 export interface LayoutAnalysis {
   overlapIds: string[]
   outOfBoundsIds: string[]
+  /** 占用率（设备投影面积并集 / 桌面面积 × 100），可能超过 100，如实反映拥挤程度 */
   coveragePercent: number
+  /** 占用率达到或超过 100%，桌面已塞满 */
+  isCrowded: boolean
   status: 'clear' | 'attention'
 }
 

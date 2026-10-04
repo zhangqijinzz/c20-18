@@ -15,7 +15,7 @@ export function PreviewOverlay({ plan, analysis, issueCount, onClose }: PreviewO
       <section className="preview-modal">
         <header className="preview-modal-header"><div><span className="eyebrow">LAYOUT PREVIEW</span><h2 id="preview-title">{plan.name}</h2><p>{plan.deskWidthMm} × {plan.deskHeightMm} mm · {plan.items.length} 件设备</p></div><button className="close-preview" aria-label="关闭预览" onClick={onClose} type="button"><X size={18} /></button></header>
         <div className="preview-canvas"><CanvasStage plan={plan} selectedItemId={null} analysis={analysis} onSelect={() => undefined} onMove={() => undefined} /></div>
-        <footer className="preview-footer"><span className="preview-check"><Check size={15} /> {issueCount === 0 ? '布局检查通过，可开始搭建' : `还有 ${issueCount} 个位置需要调整`}</span><button className="preview-done" onClick={onClose} type="button">返回编辑</button></footer>
+        <footer className="preview-footer"><span className={`preview-check ${analysis.status === 'attention' ? 'preview-warning' : ''}`}><Check size={15} /> {issueCount > 0 ? `还有 ${issueCount} 个位置需要调整` : analysis.isCrowded ? '设备已占满桌面，布局过于拥挤' : '布局检查通过，可开始搭建'}</span><button className="preview-done" onClick={onClose} type="button">返回编辑</button></footer>
       </section>
     </div>
   )
